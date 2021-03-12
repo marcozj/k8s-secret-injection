@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mutation-test-deployment
+spec:
+  selector: 
+    matchLabels:
+      app: mutation-test
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mutation-test
+      annotations:
+        vault.centrify.com/mutate: "yes"
+        #vault.centrify.com/init-image: "829715034116.dkr.ecr.ap-southeast-1.amazonaws.com/centrify/secret-injector-oauth"
+        #vault.centrify.com/sidecar-image: "829715034116.dkr.ecr.ap-southeast-1.amazonaws.com/centrify/secret-injector-dmc"
+        #vault.centrify.com/init-image: "centrify.azurecr.io/secret-injector-oauth"
+        #vault.centrify.com/sidecar-image: "centrify.azurecr.io/secret-injector-dmc"
+        #vault.centrify.com/init-image: "asia.gcr.io/marco-zhang/centrify/secret-injector-oauth"
+        #vault.centrify.com/sidecar-image: "asia.gcr.io/marco-zhang/centrify/secret-injector-dmc"
+        #vault.centrify.com/init-container: "yes"
+        vault.centrify.com/app-launcher: "/centrify/bin/centrify-app-launcher"
+        #vault.centrify.com/sidecar-container: "yes"
+        vault.centrify.com/auth-type: oauth
+        vault.centrify.com/tenant-url: "https://<tenantid>.my.centrify.net"
+        vault.centrify.com/appid: "CentrifyCLI"
+        vault.centrify.com/scope: "all"
+        vault.centrify.com/oauth-secret-name: "vault-token"
+        #vault.centrify.com/enrollment-code: ""
+        vault.centrify.com/vaultsecret_DB_PASSWORD: "vault://system/MySQL (Demo Lab)/dbadmin"
+        #vault.centrify.com/vaultsecret_mysecret1: "vault://secret/folder1/testsecret1"
+        #vault.centrify.com/vaultsecret_mysecret2: "vault://secret/folder1/folder2/testsecret2"
+        #vault.centrify.com/vaultsecret_OS_PASSWORD: "vault://system/centos1/clocal_account"
+    spec:
+      #volumes:
+      #- name: cgroup
+      #  hostPath:
+      #    path: /sys/fs/cgroup
+      containers:
+      - name: mutation-test
+        image: alpine
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sleep","infinity"]
+        #securityContext:
+          #privileged: true
+          #runAsUser: 0
+          #capabilities:
+          #  add: ["SYS_ADMIN"]
+        #volumeMounts:
+        #- name: cgroup
+        #  mountPath: /sys/fs/cgroup:ro
+        env:
+        - name: DEMO_GREETING
+          value: "Hello from the environment"
+        - name: CFYVAULT_CONTAINER_CMD
+          value: "/bin/sh"

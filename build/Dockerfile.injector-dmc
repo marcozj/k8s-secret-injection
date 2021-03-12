@@ -1,0 +1,50 @@
+FROM ubuntu:latest
+# Image used by K8S sidecar container
+
+# build time argument
+# TENANT_URL: tenant URL
+ARG TENANT_URL
+ARG ENROLLMENT_CODE
+ARG ROLE
+
+# fill in the correct values for the followings
+# note that they can be set in docker run command
+#ENV CODE="" PORT="" NAME="" ADDRESS="" CONNECTOR="" LOGIN_ROLE="" 
+ENV PORT="" NAME="" ADDRESS="" CONNECTOR="" LOGIN_ROLE=""
+ENV OPTION="" ROOT_PASSWORD=""
+ENV URL $TENANT_URL
+ENV CODE $ENROLLMENT_CODE
+
+# Install neccessary software
+RUN apt-get update && apt-get install -y vim wget systemd init
+
+# download CentrifyCC agent
+RUN wget -O /tmp/centrifycc-deb8-x86_64.deb \
+  https://edge.centrify.com/products/cloud-service/CliDownload/Centrify/centrifycc-deb8-x86_64.deb \
+  && apt-get install -y /tmp/centrifycc-deb8-x86_64.deb
+
+ENV SYSTEMDIR="/usr/lib/systemd/system"
+
+# Create CentrifyCC unenrol service so that cagent automatically unenrol from PAS after shutdown
+COPY ./scripts/centrifycc-unenroll.service ${SYSTEMDIR}/centrifycc-unenroll.service
+#RUN chmod 500 ${SYSTEMDIR}/centrifycc-unenroll.service
+RUN systemctl enable centrifycc-unenroll.service
+
+# Create service to run secret injection utility. The utility waits for cagent is in connected mode before starting 
+COPY ./scripts/centrify-secret-injector.service ${SYSTEMDIR}/
+#RUN chmod 500 ${SYSTEMDIR}/centrify-secret-injector.service
+RUN systemctl enable centrify-secret-injector.service
+
+ENV SCRIPTDIR="/usr/local/bin"
+COPY ./scripts/centrifycc-enroll.sh ${SCRIPTDIR}/
+COPY ./scripts/centrify-secret-injector-dmc.sh ${SCRIPTDIR}/
+COPY ./build/centrify-secret-injector ${SCRIPTDIR}/
+RUN chmod 500 ${SCRIPTDIR}/*
+
+STOPSIGNAL SIGRTMIN+3
+#ENTRYPOINT ["/sbin/init", "--log-target=journal"]
+
+#CMD ["/usr/sbin/init"]
+CMD [ "/usr/local/bin/centrifycc-enroll.sh"]
+
+

@@ -1,0 +1,21 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: webhook-server-mutate
+  labels:
+    app: webhook-server
+webhooks:
+  - name: webhook-server-svc.centrify.me
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    clientConfig:
+      service:
+        name: webhook-server-svc
+        namespace: default
+        path: "/mutate"
+      caBundle: ${CA_BUNDLE}
+    rules:
+    - operations: [ "CREATE" ]
+      apiGroups: [""]
+      apiVersions: ["v1"]
+      resources: ["pods"]

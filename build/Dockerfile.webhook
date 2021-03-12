@@ -1,0 +1,9 @@
+
+FROM alpine:latest
+
+ARG VERSION=0.1.0
+
+ADD ./build/centrify-webhook-server /centrify-webhook-server
+
+ENTRYPOINT ["/centrify-webhook-server"]
+EXPOSE 8443

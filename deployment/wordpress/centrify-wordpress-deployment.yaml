@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  labels:
+    app: wordpress
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: wordpress
+    tier: frontend
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wp-pv-claim
+  labels:
+    app: wordpress
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  labels:
+    app: wordpress
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+      tier: frontend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        vault.centrify.com/mutate: "yes"
+        vault.centrify.com/sidecar-container: "yes"
+        #vault.centrify.com/init-image: "asia.gcr.io/marco-zhang/centrify/secret-injector-oauth"
+        #vault.centrify.com/sidecar-image: "asia.gcr.io/marco-zhang/centrify/secret-injector-dmc"
+        vault.centrify.com/app-launcher: "/centrify/bin/centrify-app-launcher"
+        vault.centrify.com/auth-type: dmc
+        vault.centrify.com/tenant-url: "https://abc0751.my.centrify.net"
+        #vault.centrify.com/appid: "CentrifyCLI"
+        vault.centrify.com/scope: "all"
+        vault.centrify.com/oauth-secret-name: "vault-token"
+        vault.centrify.com/enrollment-code: "M_OYKLTX3QHBRMJ-V5SMKEE7LRFVTTBKLFFSFALITKM1"
+        vault.centrify.com/vaultsecret_WORDPRESS_DB_PASSWORD: "vault://system/MySQL (Demo Lab)/dbadmin"
+      labels:
+        app: wordpress
+        tier: frontend
+    spec:
+      containers:
+      - image: wordpress:4.8-apache
+        name: wordpress
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: wordpress-mysql
+        - name: WORDPRESS_DB_PASSWORD
+        - name: CFYVAULT_CONTAINER_ENTRYPOINT
+          value: docker-entrypoint.sh
+        - name: CFYVAULT_CONTAINER_CMD
+          value: apache2-foreground
+        ports:
+        - containerPort: 80
+          name: wordpress
+        volumeMounts:
+        - name: wordpress-persistent-storage
+          mountPath: /var/www/html
+      volumes:
+      - name: wordpress-persistent-storage
+        persistentVolumeClaim:
+          claimName: wp-pv-claim

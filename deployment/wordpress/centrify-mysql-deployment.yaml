@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-mysql
+  labels:
+    app: wordpress
+spec:
+  ports:
+    - port: 3306
+  selector:
+    app: wordpress
+    tier: mysql
+  clusterIP: None
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pv-claim
+  labels:
+    app: wordpress
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: wordpress-mysql
+  labels:
+    app: wordpress
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+      tier: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        vault.centrify.com/mutate: "yes"
+        vault.centrify.com/app-launcher: "/centrify/bin/centrify-app-launcher"
+        vault.centrify.com/auth-type: oauth
+        vault.centrify.com/tenant-url: "https://abc0751.my.centrify.net"
+        vault.centrify.com/appid: "CentrifyCLI"
+        vault.centrify.com/scope: "all"
+        vault.centrify.com/oauth-secret-name: "vault-token"
+        vault.centrify.com/vaultsecret_MYSQL_ROOT_PASSWORD: "vault://system/MySQL (Demo Lab)/dbadmin"
+      labels:
+        app: wordpress
+        tier: mysql
+    spec:
+      containers:
+      - image: mysql:5.6
+        name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+        - name: CFYVAULT_CONTAINER_ENTRYPOINT
+          value: docker-entrypoint.sh
+        - name: CFYVAULT_CONTAINER_CMD
+          value: mysqld
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-persistent-storage
+        persistentVolumeClaim:
+          claimName: mysql-pv-claim
